@@ -1,7 +1,11 @@
 # include <iostream>
 # include <cstdlib>
 
-# include "include/conio.h"
+# if defined(_WIN32) || defined(_WIN64)
+    # include <conio.h>
+# else
+    # include "include/conio.h"
+# endif
 
 void reset_cursor(){
     std::cout << "\033[H";
@@ -15,25 +19,13 @@ void clear(){
     # endif
 }
 
-int getcharr(){
-    // # if defined(_WIN32) || defined(_WIN64)
-    //     # include <Windows.h>
+char get_char(){
+    # if defined(_WIN32) || defined(_WIN64)
+        return getch();
 
-    //     if(GetKeyState('A') & 0x8000/*Check if high-order bit is set (1 << 15)*/)
-    //     {
-    //         // Do stuff
-    //     }
-    // # else
+    # else
+        Console c;
+        return c.getch();
 
-    // # endif
-
-    Console c;
-
-    return c.getch();
-}
-
-int main(int argc, char** argv){
-    while(true){
-        std::cout << (char)getcharr() << '\n';
-    }
+    # endif
 }

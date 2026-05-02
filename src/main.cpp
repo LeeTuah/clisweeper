@@ -9,6 +9,8 @@ private:
     std::vector<std::vector<int>> board;
     int difficulty; // 1 = easy (12x8, 11), 2 = normal (20x12, 40), 3 = hard (24x21, 99)
 
+    char cursor = '^';
+    
     int board_size[2];
     int cursor_coords[2];
     int total_bombs;
@@ -73,7 +75,7 @@ void Minesweeper::display_board(){
                 if (x == 0){
                     std::cout << " ";
 
-                    if (cursor_coords[0] == j && cursor_coords[1] == i) std::cout << "^";
+                    if (cursor_coords[0] == j && cursor_coords[1] == i) std::cout << cursor;
                     else std::cout << " ";
 
                     std::cout << " ┃";
@@ -84,11 +86,25 @@ void Minesweeper::display_board(){
         }
     }
 
-    std::cout << cursor_coords[0] << " " << cursor_coords[1];
+    std::cout << "Cursor coordinates: (" << cursor_coords[0] << ", " << cursor_coords[1] << ")\n";
 }
 
 void Minesweeper::get_kb_input(){
-    
+    char input = get_char();
+
+    if (input == 'w'){
+        if (cursor_coords[1] > 0)
+        cursor_coords[1] -= 1;
+    } else if (input == 's'){
+        if (cursor_coords[1] < board_size[1] - 1)
+        cursor_coords[1] += 1;
+    } else if (input == 'a'){
+        if (cursor_coords[0] > 0)
+        cursor_coords[0] -= 1;
+    } else if (input == 'd'){
+        if (cursor_coords[0] < board_size[0] - 1)
+        cursor_coords[0] += 1;
+    }
 }
 
 void Minesweeper::run(){
