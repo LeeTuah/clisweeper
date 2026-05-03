@@ -20,6 +20,9 @@ Symbols:
 (Cell below) + 1 -> Flag Placed
 */
 
+// TODO: complete the winning logic
+// last worked on clearing stuff 
+
 class Minesweeper{
 private:
     std::vector<std::vector<int>> board;
@@ -27,20 +30,30 @@ private:
 
     char cursor = '^';
     
-    int empty_cell = 10;   // ground touched and no bomb
-    int tile_cell = 20;    // ground not touched yet
-    int bomb_cell = -10;   // bomb is present
-    int flag_addn = 1;     // adds by given num to a cell if flag places there
+    int empty_cell = 10;     // ground touched and no bomb
+    int tile_cell = 20;      // ground not touched yet
+    int numbered_cell = 100; // tiles with numbers (1 to 8) eg. 101 == 1, 105 == 5
+    int bomb_cell = -10;     // bomb is present
+    int flag_addn = 1;       // adds by given num to a cell if flag places there
     int cell_lists[3] = {empty_cell + flag_addn, tile_cell + flag_addn, bomb_cell + flag_addn}; // ONLY FOR ITERATING
+
+    bool is_game_over = false;
+    bool player_won = false;
+    bool gen_bombs = true;
 
     int board_size[2];
     int cursor_coords[2];
     int total_bombs;
     int remaining_flags;
+    int cursor_radius; // only used to generate bombs
 
-    void generate_board();
+    int get_elem_at_cursor();
+    void set_elem_at_cursor(int elem);
+
+    void generate_bombs();
     void display_board();
     void get_kb_input();
+    void empty_out_tiles(int x, int y);
 
 public:
     Minesweeper(int difficulty);
@@ -55,38 +68,61 @@ Minesweeper::Minesweeper(int difficulty){
         board_size[0] = 12;
         board_size[1] = 8;
         total_bombs = 14;
+        cursor_radius = 1;
     } else if (difficulty == 2) {
         board_size[0] = 20;
         board_size[1] = 12;
         total_bombs = 39;
-    } else if (difficulty == 3) { // TODO: change to a rect-shaped board size 
+        cursor_radius = 3;
+    } else if (difficulty == 3) {
         board_size[0] = 28;
         board_size[1] = 18;
         total_bombs = 99;
+        cursor_radius = 5;
     }
 
     cursor_coords[0] = (board_size[0] / 2) - 1;
     cursor_coords[1] = (board_size[1] / 2) - 1;
     remaining_flags = total_bombs;
-    this->generate_board();
-}
 
-void Minesweeper::generate_board(){
     for (int i = 0; i < board_size[1]; i++){
         board.push_back(std::vector<int>());
         for (int j = 0; j < board_size[0]; j++){
             board[i].push_back(tile_cell);
         }
     }
+}
 
+int Minesweeper::get_elem_at_cursor(){
+    return board[cursor_coords[1]][cursor_coords[0]];
+}
+
+void Minesweeper::set_elem_at_cursor(int elem){
+    board[cursor_coords[1]][cursor_coords[0]] = elem;
+}
+
+void Minesweeper::generate_bombs(){
     int bombs_added = 0;
 
+    std::vector<int> rel_tiles_near_cursor_x;
+    std::vector<int> rel_tiles_near_cursor_y;
+
+    for (int i = -cursor_radius; i <= cursor_radius; i++){
+        rel_tiles_near_cursor_x.push_back(cursor_coords[0] + i);
+        rel_tiles_near_cursor_y.push_back(cursor_coords[1] + i);
+    }
+        
     while (bombs_added < total_bombs){
-        int x, y;
+        int x, y, dist_x, dist_y;
         x = random_number(0, board_size[0] - 1);
         y = random_number(0, board_size[1] - 1);
 
-        if (board[y][x] != bomb_cell && (y != cursor_coords[1] && x != cursor_coords[0])){
+        if (board[y][x] == bomb_cell) continue;
+
+        dist_x = std::abs(x - cursor_coords[0]);
+        dist_y = std::abs(y - cursor_coords[1]);
+
+        if (dist_x > cursor_radius or dist_y > cursor_radius){
             board[y][x] = bomb_cell;
             bombs_added++;
         }
@@ -110,13 +146,20 @@ void Minesweeper::display_board(){
                 if (x == 0){
                     std::cout << " ";
 
-                    if (cursor_coords[0] == j && cursor_coords[1] == i) std::cout << _CYAN + cursor;
+                    if (cursor_coords[0] == j and cursor_coords[1] == i) std::cout << _CYAN + cursor;
 
                     else if(std::find(std::begin(cell_lists), std::end(cell_lists), board[i][j]) != std::end(cell_lists))
                         std::cout << _GREEN + "▶";
                     
+                    else if(board[i][j] > numbered_cell){
+                        if (board[i][j] == numbered_cell + 1) std::cout << _CYAN;
+                        else if (board[i][j] == numbered_cell + 2) std::cout << _YELLOW;
+                        else if (board[i][j] >= numbered_cell + 3) std::cout << _RED;
+
+                        std::cout << board[i][j] - numbered_cell;
+                    }
                     else if(board[i][j] == empty_cell) std::cout << " ";
-                    else if(board[i][j] == bomb_cell) std::cout << "B";
+                    // else if(board[i][j] == bomb_cell) std::cout << "B";
                     else std::cout << _YELLOW + "█";
 
                     std::cout << RESET + " ┃";
@@ -151,18 +194,73 @@ void Minesweeper::get_kb_input(){
         if (cursor_coords[0] < board_size[0] - 1)
         cursor_coords[0] += 1;
     } else if (input == 'q'){
-        // TODO: do something
+        if (gen_bombs){
+            gen_bombs = false;
+            generate_bombs();
+        }
+
+        int cursor_elem = get_elem_at_cursor();
+
+        if (cursor_elem == bomb_cell){
+            is_game_over = true;
+            player_won = false;
+        }
+        else if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)) return;
+        else if (cursor_elem == tile_cell)
+            empty_out_tiles(cursor_coords[0], cursor_coords[1]);
     } else if (input == 'e'){
-        if (std::find(std::begin(cell_lists), std::end(cell_lists), board[cursor_coords[1]][cursor_coords[0]]) != std::end(cell_lists)){
-            board[cursor_coords[1]][cursor_coords[0]] -= flag_addn;
+        if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)){
+            set_elem_at_cursor(get_elem_at_cursor() - flag_addn);
             remaining_flags++;
         }
 
         else{ // place flag
-            if (remaining_flags > 0){
-                board[cursor_coords[1]][cursor_coords[0]] += flag_addn;
+            if (remaining_flags > 0 and get_elem_at_cursor() < 100){
+                set_elem_at_cursor(get_elem_at_cursor() + flag_addn);
                 remaining_flags--;
             }
+        }
+    }
+}
+
+void Minesweeper::empty_out_tiles(int x, int y){
+    if ((x < 0 or x >= board_size[0]) or (y < 0 or y >= board_size[1])) return;
+    
+    if (board[y][x] == bomb_cell or board[y][x] == bomb_cell + flag_addn) return;
+
+    // check for flags
+    if (std::find(std::begin(cell_lists), std::end(cell_lists), board[y][x]) != std::end(cell_lists)) return;
+
+    if (board[y][x] != tile_cell) return;
+
+    int neighbor_bomb_count = 0;
+    for (int i = -1; i <= 1; i++){
+        for (int j = -1; j <= 1; j++){
+            int dx = x + j;
+            int dy = y + i;
+
+            if (i == 0 and j == 0) continue;
+            if ((dx < 0 or dx >= board_size[0]) or (dy < 0 or dy >= board_size[1])) continue;
+
+            if (board[dy][dx] == bomb_cell) neighbor_bomb_count++;
+        }
+    }
+
+    if (neighbor_bomb_count > 0){
+        board[y][x] = numbered_cell + neighbor_bomb_count;
+        return;
+    }
+
+    for (int i = -1; i <= 1; i++){
+        for (int j = -1; j <= 1; j++){
+            int dx = x + j;
+            int dy = y + i;
+
+            if (i == 0 and j == 0) continue;
+            if ((dx < 0 or dx >= board_size[0]) or (dy < 0 or dy >= board_size[1])) continue;
+
+            board[y][x] = empty_cell;
+            empty_out_tiles(dx, dy);
         }
     }
 }
@@ -171,6 +269,17 @@ void Minesweeper::run(){
     while(true){
         display_board();
         get_kb_input();
+
+        if (is_game_over){
+            if (player_won){
+                clear();
+                std::cout << "You win!";
+            } else {
+                clear();
+                std::cout << "You lose!";
+            }
+            break;
+        }
     }
 }
 
