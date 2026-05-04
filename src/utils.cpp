@@ -64,7 +64,7 @@ void slow_print(std::string message, int delay_in_ms = 50){
 }
 
 void fix_mojibake_for_windows(){
-    #if defined(_WIN32) || defined(_WIN64)
+    # if defined(_WIN32) || defined(_WIN64)
         SetConsoleOutputCP(CP_UTF8);
 
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -72,7 +72,7 @@ void fix_mojibake_for_windows(){
         GetConsoleMode(hOut, &dwMode);
         dwMode |= 0x0004;
         SetConsoleMode(hOut, dwMode);
-    #endif
+    # endif
 }
 
 // int main(){

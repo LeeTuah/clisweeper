@@ -247,7 +247,7 @@ void Minesweeper::empty_out_tiles(int x, int y){
             if (i == 0 and j == 0) continue;
             if ((dx < 0 or dx >= board_size[0]) or (dy < 0 or dy >= board_size[1])) continue;
 
-            if (board[dy][dx] == bomb_cell) neighbor_bomb_count++;
+            if (board[dy][dx] == bomb_cell or board[dy][dx] == bomb_cell + flag_addn) neighbor_bomb_count++;
         }
     }
 
@@ -282,8 +282,6 @@ void Minesweeper::check_for_win(){
     is_game_over = true;
     player_won = true;
 }
-
-
 
 void Minesweeper::game_over_animation(){
     if (player_won){
