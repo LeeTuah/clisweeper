@@ -1,6 +1,8 @@
 # include <iostream>
 # include <cstdlib>
 # include <random>
+# include <thread>
+# include <chrono>
 
 std::string _RED = "\033[31m";
 std::string _GREEN = "\033[32m";
@@ -48,3 +50,26 @@ int random_number(int begin, int end){
     std::uniform_int_distribution<> distrib(begin, end);
     return distrib(generator);
 }
+
+void sleep_for(int delay_in_ms){
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_in_ms));
+}
+
+void slow_print(std::string message, int delay_in_ms = 50){
+    for (auto ch : message){
+        std::cout << ch << std::flush;
+        sleep_for(delay_in_ms);
+    }
+}
+
+// int main(){
+//     # include <string>
+
+//     std::string you_won = R"(
+// █▄█ █▀█ █░█   █░█░█ █ █▄░█ █
+// ░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
+// )";
+//     slow_print(_GREEN + you_won + RESET, 15);
+//     slow_print("         \n");
+        
+// }
