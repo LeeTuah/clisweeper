@@ -23,7 +23,6 @@ Symbols:
 
 // TODO: complete the winning logic
 // TODO: multiplayer
-// last worked on clearing stuff 
 
 class Minesweeper{
 private:
@@ -32,7 +31,7 @@ private:
     int difficulty; // 1 = easy (12x8, 11), 2 = normal (20x12, 40), 3 = hard (24x21, 99)
 
     char cursor = '^';
-    
+
     int empty_cell = 10;     // ground touched and no bomb
     int tile_cell = 20;      // ground not touched yet
     int numbered_cell = 100; // tiles with numbers (1 to 8) eg. 101 == 1, 105 == 5
@@ -117,7 +116,7 @@ void Minesweeper::generate_bombs(){
         rel_tiles_near_cursor_x.push_back(cursor_coords[0] + i);
         rel_tiles_near_cursor_y.push_back(cursor_coords[1] + i);
     }
-        
+
     while (bombs_added < total_bombs){
         int x, y, dist_x, dist_y;
         x = random_number(0, board_size[0] - 1);
@@ -137,7 +136,7 @@ void Minesweeper::generate_bombs(){
 }
 
 void Minesweeper::display_board(){
-    clear();
+    reset_cursor();
 
     std::cout << "╋";
     for (int x = 0; x < board_size[0]; x++){
@@ -157,7 +156,7 @@ void Minesweeper::display_board(){
                     else if (cursor_coords[0] == j and cursor_coords[1] == i) std::cout << _CYAN + cursor;
                     else if(std::find(std::begin(cell_lists), std::end(cell_lists), board[i][j]) != std::end(cell_lists))
                         std::cout << _GREEN + "▶";
-                    
+
                     else if(board[i][j] > numbered_cell){
                         if (board[i][j] == numbered_cell + 1) std::cout << _CYAN;
                         else if (board[i][j] == numbered_cell + 2) std::cout << _YELLOW;
@@ -231,7 +230,7 @@ void Minesweeper::get_kb_input(){
 
 void Minesweeper::empty_out_tiles(int x, int y){
     if ((x < 0 or x >= board_size[0]) or (y < 0 or y >= board_size[1])) return;
-    
+
     if (board[y][x] == bomb_cell or board[y][x] == bomb_cell + flag_addn) return;
 
     // check for flags
@@ -300,7 +299,7 @@ You cleared out all the bombs!
         reveal_bomb_cells = true;
         std::string you_lose = R"(
 █▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀
-░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄        
+░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄
 You Stepped on a bomb!
 )";
 
@@ -324,6 +323,9 @@ void Minesweeper::run(){
 }
 
 int main(int argc, char** argv){
+    clear();
+    fix_mojibake_for_windows();
+
     int difficulty = 1;
 
     Minesweeper minesweeper(difficulty);
