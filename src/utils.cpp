@@ -1,3 +1,6 @@
+# ifndef UTILS_CPP_FILES__
+# define UTILS_CPP_FILES__
+
 # include <iostream>
 # include <cstdlib>
 # include <random>
@@ -11,6 +14,9 @@ std::string _BLUE = "\033[34m";
 std::string _PURPLE = "\033[35m";
 std::string _CYAN = "\033[36m";
 std::string _WHITE = "\033[37m";
+
+std::string _PURPLE_BG = "\033[45m";
+std::string _WHITE_BG = "\033[47m";
 
 std::string RESET = "\033[0m";
 
@@ -86,3 +92,5 @@ void fix_mojibake_for_windows(){
 //     slow_print("         \n");
 
 // }
+
+# endif

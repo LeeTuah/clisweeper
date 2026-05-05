@@ -152,10 +152,10 @@ void Minesweeper::display_board(){
                 if (x == 0){
                     std::cout << " ";
 
-                    if(board[i][j] == bomb_cell and reveal_bomb_cells) std::cout << _RED + "✸";
-                    else if (cursor_coords[0] == j and cursor_coords[1] == i) std::cout << _CYAN + cursor;
+                    if((board[i][j] == bomb_cell or board[i][j] == bomb_cell + flag_addn) and reveal_bomb_cells) std::cout << _RED + "✸";
+                    else if (cursor_coords[0] == j and cursor_coords[1] == i) std::cout << _CYAN + _PURPLE_BG + cursor;
                     else if(std::find(std::begin(cell_lists), std::end(cell_lists), board[i][j]) != std::end(cell_lists))
-                        std::cout << _GREEN + "▶";
+                        std::cout << _RED + "▶";
 
                     else if(board[i][j] > numbered_cell){
                         if (board[i][j] == numbered_cell + 1) std::cout << _CYAN;
@@ -165,21 +165,21 @@ void Minesweeper::display_board(){
                         std::cout << board[i][j] - numbered_cell;
                     }
                     else if(board[i][j] == empty_cell) std::cout << " ";
-                    else std::cout << _YELLOW + "█";
+                    else std::cout << _GREEN + "█";
 
                     std::cout << RESET + " ┃";
                 }
 
                 else std::cout << "━━━╋";
-            } std::cout << std::endl;
+            } std::cout << "   " << std::endl;
         }
     }
 
-    std::cout << "Remaining Flags: " << remaining_flags << '\n';
-    std::cout << "Time Spent: " << "something something\n"; // TODO: stopwatch
+    std::cout << "Remaining Flags: " << remaining_flags << "              \n";
+    std::cout << "Time Spent: " << "something something                   \n"; // TODO: stopwatch
 
-    std::cout << "\nCursor coordinates: (" << cursor_coords[0] + 1 << ", " << cursor_coords[1] + 1 << ")\n";
-    std::cout << "WASD: Move, Q: Reveal Tile, E: Edit Flag\n";
+    std::cout << "\nCursor coordinates: (" << cursor_coords[0] + 1 << ", " << cursor_coords[1] + 1 << ")                \n";
+    std::cout << "WASD: Move, Q: Reveal Tile, E: Place/Remove Flag, P: Exit Game\n                         ";
     std::cout << std::endl;
 }
 
@@ -225,7 +225,7 @@ void Minesweeper::get_kb_input(){
                 remaining_flags--;
             }
         }
-    }
+    } else if (input == 'p') std::exit(0);
 }
 
 void Minesweeper::empty_out_tiles(int x, int y){
@@ -291,6 +291,7 @@ void Minesweeper::game_over_animation(){
 You cleared out all the bombs!
 )";
 
+        display_board();
         slow_print(_GREEN + you_won + RESET, 15);
         sleep_for(500);
     } else {
@@ -320,14 +321,14 @@ void Minesweeper::run(){
     }
 }
 
-int main(int argc, char** argv){
-    clear();
-    fix_mojibake_for_windows();
+// int main(int argc, char** argv){
+//     clear();
+//     fix_mojibake_for_windows();
 
-    int difficulty = 1;
+//     int difficulty = 1;
 
-    Minesweeper minesweeper(difficulty);
-    minesweeper.run();
+//     Minesweeper minesweeper(difficulty);
+//     minesweeper.run();
 
-    return 0;
-}
+//     return 0;
+// }
