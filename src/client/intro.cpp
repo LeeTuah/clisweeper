@@ -1,3 +1,6 @@
+# ifndef INTRO_CPP_
+# define INTRO_CPP_
+
 # include "utils.cpp"
 
 std::string clisweeper = _GREEN + R"(
@@ -33,3 +36,5 @@ void controls(){
     std::cout << "Press any key to exit........";
     get_char();
 }
+
+# endif

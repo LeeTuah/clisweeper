@@ -1,3 +1,6 @@
+# ifndef MINESWEEPER_CLI_
+# define MINESWEEPER_CLI_
+
 # include <iostream>
 # include <vector>
 # include <cstdlib>
@@ -332,3 +335,5 @@ void Minesweeper::run(){
 
 //     return 0;
 // }
+
+# endif
