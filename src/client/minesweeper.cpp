@@ -21,7 +21,7 @@ Symbols:
 (Cell below) + 1 -> Flag Placed
 */
 
-// TODO: complete the winning logic
+// TODO: sound support
 // TODO: multiplayer
 
 class Minesweeper{

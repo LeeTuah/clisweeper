@@ -1,7 +1,7 @@
 # include "minesweeper.cpp"
 # include "intro.cpp"
 
-# include "include/Menu.h"
+# include "../include/Menu.h"
 
 void temp(){
     // 
@@ -9,7 +9,7 @@ void temp(){
 
 void singleplayer(){
     std::cout << _CYAN << "Choose your difficulty: \n";
-    std::cout << _GREEN << "1. Easy \n2. Medium \n3. Hard\n4. Back\n>> " << RESET;
+    std::cout << _GREEN << "1. Easy \n2. Medium \n3. Hard \n4. Back \n>> " << RESET;
 
     char input = get_char();
 
@@ -37,10 +37,11 @@ int main(){
     intro_menu.set_heading("CLI Sweeper");
     intro_menu.header = clisweeper;
     intro_menu.set_colors("32", "33");
+    intro_menu.set_max_len(33);
 
     intro_menu.add_field("Singleplayer", singleplayer);
     intro_menu.add_field("Multiplayer", temp);
-    intro_menu.add_field("Controls", temp);
+    intro_menu.add_field("Controls", controls);
 
     intro_menu.run_menu();
 
