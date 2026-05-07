@@ -81,6 +81,11 @@ void fix_mojibake_for_windows(){
     # endif
 }
 
+std::string substr(std::string str, int length){
+    std::string s = str.substr(0, length);
+    return s;
+}
+
 // int main(){
 //     # include <string>
 

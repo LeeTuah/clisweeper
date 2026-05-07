@@ -5,10 +5,13 @@
 # include <unistd.h>
 # include <thread>
 # include <map>
+# include <vector>
 
 struct Client{
     int socket;
     std::string name;
+    bool has_room;
+    std::string roomate;
 };
 
 int server_socket;
@@ -37,32 +40,33 @@ void handle_connections(Client client){
             name_needed = false;
 
             if (client_map.find(message) != client_map.end()){
-                const char *res = "This name is already taken, try another one!";
+                const char *res = "403|This name is already taken, try another one!";
                 send(client.socket, res, strlen(res), 0);
                 std::cout << "Client kicked out for duplicate username.\n";
                 break;
             }
 
             client.name = message;
+            client.has_room = false;
+            client.roomate = "";
             client_map.insert({client.name, client});
 
-            const char *res = "Successfully entered you to the server!";
+            const char *res = "200|Successfully entered you to the server!";
             send(client.socket, res, strlen(res), 0);
             std::cout << client.name << " joined the server.\n" << std::flush;
 
             continue;
-        }
-        
-        if (message == "!close") {
-            const char *res = "CLOSEDCONNECTION";
+        } else if (message == "!close") {
+            const char *res = "200|Closed your connection successfully.";
             send(client.socket, res, strlen(res), 0);
-            std::cout << "Client requested to close the connection!\n";
-            break;
-        }
 
-        std::cout << client.name << ": " << message << std::endl;
-        const char *res = "RECVMSG";
-        send(client.socket, res, strlen(res), 0);
+            if (client.name != "") std::cout << client.name << " requested to close the connection!\n";
+            else std::cout << "Client requested to close the connection!\n";
+
+            break;
+        } else if (message == "!host") {
+            
+        }
     }
 
     client_map.erase(client.name);

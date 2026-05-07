@@ -28,7 +28,7 @@ Symbols:
 // TODO: multiplayer
 
 class Minesweeper{
-private:
+protected:
     std::vector<std::vector<int>> board;
     std::vector<std::pair<int, int>> bomb_locations;
     int difficulty; // 1 = easy (12x8, 11), 2 = normal (20x12, 40), 3 = hard (24x21, 99)
@@ -323,17 +323,5 @@ void Minesweeper::run(){
         }
     }
 }
-
-// int main(int argc, char** argv){
-//     clear();
-//     fix_mojibake_for_windows();
-
-//     int difficulty = 1;
-
-//     Minesweeper minesweeper(difficulty);
-//     minesweeper.run();
-
-//     return 0;
-// }
 
 # endif
