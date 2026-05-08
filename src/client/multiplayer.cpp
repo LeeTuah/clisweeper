@@ -5,6 +5,7 @@
 # include <sys/socket.h>
 # include <arpa/inet.h>
 # include <unistd.h>
+# include <vector>
 
 # include "minesweeper.cpp"
 
@@ -14,6 +15,8 @@ protected:
     sockaddr_in server_address;
     std::string name;
 
+    std::vector<std::string> players_in_lobby;
+
     void recieve_board_from_host();
 public:
     Multisweeper(int difficulty) : Minesweeper(difficulty){
@@ -21,7 +24,7 @@ public:
 
         server_address.sin_family = AF_INET;
         server_address.sin_port = htons(6741);
-        inet_pton(AF_INET, "192.168.1.3", &(server_address.sin_addr));
+        inet_pton(AF_INET, "192.168.1.4", &(server_address.sin_addr));
     }
 
     void run();
@@ -46,72 +49,86 @@ void Multisweeper::run(){
     if (recv_bytes <= 0){
         std::cout << "Connection with the server closed down!\n";
         return;
-    }
-
-    message = std::string(buffer, recv_bytes);
+    } message = std::string(buffer, recv_bytes);
 
     if (substr(message, 3) != "200"){
         std::cout << "An error occured!\n" << message;
         return;
     }
 
-    std::cout << "Choose one of the following: \n";
-    std::cout << "1. Host Game \n2. Join Game \n3. Exit";
+    while(true){
+        clear();
 
-    char input = get_char();
+        std::cout << "Choose one of the following: \n";
+        std::cout << "1. Host Game \n2. Join Game \n3. Exit\n>> ";
 
-    if (input == '1'){
+        char input = get_char();
 
-    } else if (input == '2'){
+        if (input == '1'){
+            const char* msg = "!host";
+            send(client_socket, msg, strlen(msg), 0);
 
-    } else if (input == '3'){
-        // send !close
+            int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
+            if (recv_bytes <= 0){
+                std::cout << "Connection with the server is closed down!\n";
+                return;
+            } message = std::string(buffer, recv_bytes);
+
+            if (substr(message, 3) != "200"){
+                std::cout << "An error occured!\n" << message;
+                return;
+            }
+            message = message.substr(4);
+
+            while(true) {
+                clear();
+
+                std::cout << "Successfully generated a room!\n" << message << std::endl;
+                std::cout << "\nPress \'W\' to start the match.\nPress \'S\' to abort the lobby." << std::endl;
+                std::cout << "Players in lobby:\n";
+
+                for (auto iter : players_in_lobby) 
+                    std::cout << &(iter) << std::endl;
+
+                char input = get_char();
+
+                if (input == 'w') {
+
+                } else if (input == 's') {
+                    const char *close_msg = "!abort";
+                    send(client_socket, close_msg, strlen(close_msg), 0);
+
+                    std::cout << "\n\nAborted the lobby!" << std::endl;
+                    sleep_for(2000);
+                    break;
+                }
+            }
+
+        } else if (input == '2'){
+            clear();
+            std::string room_code;
+            std::getline(std::cin, room_code);
+
+            if (room_code.length() != 5) {
+                std::cout << "Invalid room code provided!" << std::endl;
+                continue;
+            }
+
+            room_code = "!join " + room_code;
+            send(client_socket, room_code.c_str(), room_code.length(), 0); // TODO: complete join
+            
+        } else if (input == '3'){
+            const char* msg = "!close";
+            send(client_socket, msg, strlen(msg), 0);
+
+            break;
+        }
     }
 }
 
 int main(){
-    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-    sockaddr_in server_address;
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(6741);
-    inet_pton(AF_INET, "192.168.1.3", &(server_address.sin_addr));
-
-    int connect_status = connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address));
-    if (connect_status == -1){
-        std::cout << "Failed to connect to the server!\n";
-        return 0;
-    }
-
-    bool name_needed = true;
-
-    while(true){
-        std::string message;
-
-        if (name_needed){
-            std::cout << "Enter name: ";
-            name_needed = false;
-        } else std::cout << "Enter message: ";
-        std::getline(std::cin, message);
-
-        send(client_socket, message.c_str(), message.length(), 0);
-        
-        char buffer[1024] = {0};
-        int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
-        if (recv_bytes <= 0){
-            std::cout << "You got disconnected from the server!\n";
-            break;
-        }
-
-        std::string message_recv = std::string(buffer, recv_bytes);
-        std::cout << message_recv << std::endl;
-        
-        if (message_recv == "This name is already taken, try another one!") break;
-
-        if (message == "!close") break;
-    }
-
-    close(client_socket);
+    Multisweeper m(1);
+    m.run();
 
     return 0;
 }

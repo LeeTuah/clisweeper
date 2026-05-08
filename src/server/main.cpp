@@ -6,16 +6,21 @@
 # include <thread>
 # include <map>
 # include <vector>
+# include <algorithm>
+
+# include "utils.cpp"
 
 struct Client{
     int socket;
     std::string name;
     bool has_room;
     std::string roomate;
+    int room_code;
 };
 
 int server_socket;
 std::map<std::string, Client> client_map;
+std::vector<int> all_rooms;
 
 void handle_connections(Client client){
     bool name_needed = true;
@@ -48,6 +53,7 @@ void handle_connections(Client client){
 
             client.name = message;
             client.has_room = false;
+            client.room_code = 0;
             client.roomate = "";
             client_map.insert({client.name, client});
 
@@ -65,8 +71,47 @@ void handle_connections(Client client){
 
             break;
         } else if (message == "!host") {
-            
+            if (client.has_room) {
+                const char *res = "403|You already have a room!";
+                send(client.socket, res, strlen(res), 0);
+                continue;
+            }
+
+            int r_code = random_number(10000, 99999);
+
+            while (std::find(all_rooms.begin(), all_rooms.end(), r_code) != all_rooms.end()) // if duplicate room id generated
+                r_code = random_number(10000, 99999);
+
+            client.has_room = true;
+            client.room_code = r_code;
+
+            client_map.at(client.name) = client;
+            all_rooms.push_back(r_code);
+
+            std::string message = "200|Your room ID is " + std::to_string(r_code);
+            send(client.socket, message.c_str(), message.length(), 0);
+            std::cout << client.name << " generated a new room with ID " << r_code << std::endl;
+        } else if (message == "!abort") {
+            if (not client.has_room){
+                const char *res = "403|You do not have a room!";
+                send(client.socket, res, strlen(res), 0);
+                continue;
+            }
+
+            all_rooms.erase(std::remove(all_rooms.begin(), all_rooms.end(), client.room_code), all_rooms.end());
+            std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
+
+            client.has_room = false;
+            client.roomate = ""; // FIXME: kick roomate from room if any
+            client.room_code = 0;
         }
+    }
+
+    if (client.has_room) { 
+        // TODO: kick roomate if present
+
+        all_rooms.erase(std::remove(all_rooms.begin(), all_rooms.end(), client.room_code), all_rooms.end());
+        std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
     }
 
     client_map.erase(client.name);

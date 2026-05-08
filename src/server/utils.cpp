@@ -24,7 +24,7 @@ std::string RESET = "\033[0m";
     # include <conio.h>
     # include <windows.h>
 # else
-    # include "include/conio_linux_port.h"
+    # include "../include/conio_linux_port.h"
 # endif
 
 void reset_cursor(){
@@ -79,6 +79,11 @@ void fix_mojibake_for_windows(){
         dwMode |= 0x0004;
         SetConsoleMode(hOut, dwMode);
     # endif
+}
+
+std::string substr(std::string str, int length){
+    std::string s = str.substr(0, length);
+    return s;
 }
 
 // int main(){
