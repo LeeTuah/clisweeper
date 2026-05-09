@@ -6,6 +6,7 @@
 # include <arpa/inet.h>
 # include <unistd.h>
 # include <vector>
+# include <cctype>
 
 # include "minesweeper.cpp"
 
@@ -89,11 +90,13 @@ void Multisweeper::run(){
 
                 for (auto iter : players_in_lobby) 
                     std::cout << &(iter) << std::endl;
+                std::cout << std::endl;
 
                 char input = get_char();
 
                 if (input == 'w') {
-
+                    const char *send_msg = "!startgame";
+                    send(client_socket, send_msg, strlen(send_msg), 0);
                 } else if (input == 's') {
                     const char *close_msg = "!abort";
                     send(client_socket, close_msg, strlen(close_msg), 0);
@@ -112,10 +115,13 @@ void Multisweeper::run(){
             if (room_code.length() != 5) {
                 std::cout << "Invalid room code provided!" << std::endl;
                 continue;
+            } else if (not std::all_of(room_code.begin(), room_code.end(), ::isdigit)) {
+                std::cout << "Room code only contains numbers!" << std::endl;
+                continue;
             }
 
             room_code = "!join " + room_code;
-            send(client_socket, room_code.c_str(), room_code.length(), 0); // TODO: complete join
+            send(client_socket, room_code.c_str(), room_code.length(), 0);
             
         } else if (input == '3'){
             const char* msg = "!close";

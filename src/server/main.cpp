@@ -1,5 +1,6 @@
 # include <iostream>
 # include <cstring>
+# include <string>
 # include <netinet/in.h>
 # include <sys/socket.h>
 # include <unistd.h>
@@ -7,6 +8,7 @@
 # include <map>
 # include <vector>
 # include <algorithm>
+# include <cctype>
 
 # include "utils.cpp"
 
@@ -14,13 +16,18 @@ struct Client{
     int socket;
     std::string name;
     bool has_room;
-    std::string roomate;
+    std::vector<std::string> roomates;
     int room_code;
+    bool playing_ingame;
 };
 
 int server_socket;
-std::map<std::string, Client> client_map;
+std::map<std::string, Client*> client_map;
 std::vector<int> all_rooms;
+
+void send_response(int client_socket, std::string message){
+    send(client_socket, message.c_str(), message.length(), 0);
+}
 
 void handle_connections(Client client){
     bool name_needed = true;
@@ -45,8 +52,7 @@ void handle_connections(Client client){
             name_needed = false;
 
             if (client_map.find(message) != client_map.end()){
-                const char *res = "403|This name is already taken, try another one!";
-                send(client.socket, res, strlen(res), 0);
+                send_response(client.socket, "403|This name is already taken, try another one!");
                 std::cout << "Client kicked out for duplicate username.\n";
                 break;
             }
@@ -54,17 +60,18 @@ void handle_connections(Client client){
             client.name = message;
             client.has_room = false;
             client.room_code = 0;
-            client.roomate = "";
-            client_map.insert({client.name, client});
+            client.roomates = {};
+            client.playing_ingame = false;
+            client_map.insert({client.name, &client});
 
-            const char *res = "200|Successfully entered you to the server!";
-            send(client.socket, res, strlen(res), 0);
+            send_response(client.socket, "200|Successfully entered you to the server!");
             std::cout << client.name << " joined the server.\n" << std::flush;
 
             continue;
+        } else if (client.playing_ingame) {
+            // playing the game
         } else if (message == "!close") {
-            const char *res = "200|Closed your connection successfully.";
-            send(client.socket, res, strlen(res), 0);
+            send_response(client.socket, "200|Closed your connection successfully.");
 
             if (client.name != "") std::cout << client.name << " requested to close the connection!\n";
             else std::cout << "Client requested to close the connection!\n";
@@ -72,8 +79,7 @@ void handle_connections(Client client){
             break;
         } else if (message == "!host") {
             if (client.has_room) {
-                const char *res = "403|You already have a room!";
-                send(client.socket, res, strlen(res), 0);
+                send_response(client.socket, "403|You already have a room!");
                 continue;
             }
 
@@ -85,16 +91,13 @@ void handle_connections(Client client){
             client.has_room = true;
             client.room_code = r_code;
 
-            client_map.at(client.name) = client;
             all_rooms.push_back(r_code);
 
-            std::string message = "200|Your room ID is " + std::to_string(r_code);
-            send(client.socket, message.c_str(), message.length(), 0);
+            send_response(client.socket, "200|Your room ID is " + std::to_string(r_code));
             std::cout << client.name << " generated a new room with ID " << r_code << std::endl;
         } else if (message == "!abort") {
             if (not client.has_room){
-                const char *res = "403|You do not have a room!";
-                send(client.socket, res, strlen(res), 0);
+                send_response(client.socket, "403|You do not have a room!");
                 continue;
             }
 
@@ -102,8 +105,33 @@ void handle_connections(Client client){
             std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
 
             client.has_room = false;
-            client.roomate = ""; // FIXME: kick roomate from room if any
+            client.roomates = {}; // FIXME: kick roomate from room if any
             client.room_code = 0;
+        } else if (substr(message, 5) == "!join") {
+            if (client.has_room or client.playing_ingame){
+                send_response(client.socket, "403|You are already in a lobby!");
+                continue;
+            }
+
+            if (message.length() != 1 + 4 + 1 + 5) {
+                send_response(client.socket, "403|Invalid join message provided!");
+                continue;
+            }
+
+            std::string room_code = message.substr(6);
+            if (not std::all_of(room_code.begin(), room_code.end(), ::isdigit)) {
+                send_response(client.socket, "403|Invalid room code provided!");
+                continue;
+            }
+
+            int r_code = std::stoi(room_code);
+            if (std::find(all_rooms.begin(), all_rooms.end(), r_code) == all_rooms.end()) {
+                send_response(client.socket, "403|The given room does not exist!");
+                continue;
+            }
+        } else if (message == "!startgame") {
+            client.playing_ingame = true;
+            // FIXME: set playing_ingame for other clients too
         }
     }
 

@@ -10,7 +10,7 @@ else
     EXT =
     LDFLAGS = -pthread
     CLEAN_CMD = rm -f
-    CLEAN_TARGETS = server/server$(EXT) client/client$(EXT)
+    CLEAN_TARGETS = src/server/server$(EXT) src/client/client$(EXT)
 endif
 
 all: src/server/server$(EXT) src/client/client$(EXT)
