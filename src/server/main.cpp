@@ -12,21 +12,33 @@
 
 # include "utils.cpp"
 
+// TODO: work on abort
+
 struct Client{
     int socket;
     std::string name;
+
     bool has_room;
+    bool is_host;
     std::vector<std::string> roomates;
     int room_code;
+
     bool playing_ingame;
 };
 
 int server_socket;
 std::map<std::string, Client*> client_map;
-std::vector<int> all_rooms;
+std::map<int, std::vector<Client*>> all_rooms;
 
 void send_response(int client_socket, std::string message){
     send(client_socket, message.c_str(), message.length(), 0);
+}
+
+bool room_exists(int room_code){
+    for (auto const &[key, val] : all_rooms)
+        if (key == room_code) return true;
+
+    return false;
 }
 
 void handle_connections(Client client){
@@ -59,6 +71,7 @@ void handle_connections(Client client){
 
             client.name = message;
             client.has_room = false;
+            client.is_host = false;
             client.room_code = 0;
             client.roomates = {};
             client.playing_ingame = false;
@@ -85,13 +98,13 @@ void handle_connections(Client client){
 
             int r_code = random_number(10000, 99999);
 
-            while (std::find(all_rooms.begin(), all_rooms.end(), r_code) != all_rooms.end()) // if duplicate room id generated
+            while (room_exists(r_code)) // if duplicate room id generated
                 r_code = random_number(10000, 99999);
 
             client.has_room = true;
             client.room_code = r_code;
 
-            all_rooms.push_back(r_code);
+            all_rooms.insert({r_code, {&client}});
 
             send_response(client.socket, "200|Your room ID is " + std::to_string(r_code));
             std::cout << client.name << " generated a new room with ID " << r_code << std::endl;
@@ -101,10 +114,11 @@ void handle_connections(Client client){
                 continue;
             }
 
-            all_rooms.erase(std::remove(all_rooms.begin(), all_rooms.end(), client.room_code), all_rooms.end());
+            all_rooms.erase(client.room_code);
             std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
 
             client.has_room = false;
+            client.is_host = true;
             client.roomates = {}; // FIXME: kick roomate from room if any
             client.room_code = 0;
         } else if (substr(message, 5) == "!join") {
@@ -125,10 +139,55 @@ void handle_connections(Client client){
             }
 
             int r_code = std::stoi(room_code);
-            if (std::find(all_rooms.begin(), all_rooms.end(), r_code) == all_rooms.end()) {
+            if (not room_exists(r_code)) {
                 send_response(client.socket, "403|The given room does not exist!");
                 continue;
             }
+
+            for (auto _client : all_rooms[r_code]) {
+                send_response(_client->socket, "201|" + client.name);
+                break;
+            }
+
+            client.has_room = true;
+            client.is_host = false;
+            client.room_code = r_code;
+            // TODO: client.roomates
+
+            all_rooms[r_code].push_back(&client);
+            send_response(client.socket, "200|Successfully joined the room!");
+            std::cout << client.name << " joined the room with ID " << r_code << std::endl;
+        } else if (message == "!all_players_in_lobby"){
+            std::string players_list = "";
+
+            for (auto client : all_rooms[client.room_code])
+                players_list += client->name + ",";
+
+            send_response(client.socket, "200|" + players_list);
+        } else if (message == "!leave") {
+            if (not client.has_room) {
+                send_response(client.socket, "403|You are not in a room.");
+                continue;
+            }
+
+            if (client.is_host) {
+                send_response(client.socket, "403|Hosts cannot leave their rooms. Abort to proceed.");
+                continue;
+            }
+
+            std::vector<Client*> *vec = &(all_rooms[client.room_code]);
+            auto iter = std::find(vec->begin(), vec->end(), &client);
+            vec->erase(iter);
+
+            for (auto _client : all_rooms[client.room_code]) 
+                send_response(_client->socket, "202|" + client.name);
+
+            client.has_room = false;
+            client.is_host = false;
+
+            send_response(client.socket, "200|Removed you from the lobby.");
+            std::cout << client.name << " left the room with ID " << client.room_code << std::endl;
+            client.room_code = 0;
         } else if (message == "!startgame") {
             client.playing_ingame = true;
             // FIXME: set playing_ingame for other clients too
@@ -138,7 +197,7 @@ void handle_connections(Client client){
     if (client.has_room) { 
         // TODO: kick roomate if present
 
-        all_rooms.erase(std::remove(all_rooms.begin(), all_rooms.end(), client.room_code), all_rooms.end());
+        all_rooms.erase(client.room_code);
         std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
     }
 

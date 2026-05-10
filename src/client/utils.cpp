@@ -86,6 +86,26 @@ std::string substr(std::string str, int length){
     return s;
 }
 
+std::vector<std::string> split_string_to_vector(std::string str, std::string seperator = ",") {
+    std::vector<std::string> vec;
+    int index = 0;
+
+    vec.push_back("");
+    for (auto chr : str) {
+        if (chr == seperator[0]) {
+            index++;
+            vec.push_back("");
+
+            continue;
+        }
+
+        vec[index] += std::string(1, chr);
+    }
+
+    if (*(vec.end() - 1) == "") vec.pop_back();
+    return vec;
+}
+
 // int main(){
 //     # include <string>
 
