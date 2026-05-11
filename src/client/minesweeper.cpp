@@ -47,6 +47,10 @@ protected:
     bool gen_bombs = true;
     bool reveal_bomb_cells = false;
 
+    // for multisweeper
+    bool placing_bombs = false;
+    bool multiplayer_gamemode = false;
+
     int board_size[2];
     int cursor_coords[2];
     int total_bombs;
@@ -201,7 +205,7 @@ void Minesweeper::get_kb_input(){
     } else if (input == 'd'){
         if (cursor_coords[0] < board_size[0] - 1)
         cursor_coords[0] += 1;
-    } else if (input == 'q'){
+    } else if (input == 'q' and not placing_bombs){
         if (gen_bombs){
             gen_bombs = false;
             generate_bombs();
@@ -216,7 +220,7 @@ void Minesweeper::get_kb_input(){
         else if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)) return;
         else if (cursor_elem == tile_cell)
             empty_out_tiles(cursor_coords[0], cursor_coords[1]);
-    } else if (input == 'e'){
+    } else if (input == 'e' and not placing_bombs){
         if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)){
             set_elem_at_cursor(get_elem_at_cursor() - flag_addn);
             remaining_flags++;
@@ -228,7 +232,8 @@ void Minesweeper::get_kb_input(){
                 remaining_flags--;
             }
         }
-    } else if (input == 'p') std::exit(0);
+    } else if (input == 'p' and not multiplayer_gamemode) std::exit(0);
+
 }
 
 void Minesweeper::empty_out_tiles(int x, int y){
