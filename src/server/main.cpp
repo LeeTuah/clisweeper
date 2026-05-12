@@ -12,8 +12,6 @@
 
 # include "utils.cpp"
 
-// TODO: work on abort
-
 /*
 My concept for Multisweeper:
 
@@ -43,6 +41,7 @@ struct Client{
 };
 
 int PLAYER_CAP = 2;
+int total_mul_bombs = 14;
 
 int server_socket;
 std::map<std::string, Client*> client_map;
@@ -61,6 +60,10 @@ bool room_exists(int room_code){
 
 void handle_connections(Client client){
     bool name_needed = true;
+    Client *opponent;
+
+    bool collect_bombs = true;
+    int bombs_left_to_collect = total_mul_bombs; // TODO reset them at the end of the game
 
     while(true){
         char buffer[1024] = {0};
@@ -180,7 +183,6 @@ void handle_connections(Client client){
             client.has_room = true;
             client.is_host = false;
             client.room_code = r_code;
-            // TODO: client.roomates
 
             all_rooms[r_code].push_back(&client);
             send_response(client.socket, "200|Successfully joined the room!");
@@ -217,14 +219,26 @@ void handle_connections(Client client){
             std::cout << client.name << " left the room with ID " << client.room_code << std::endl;
             client.room_code = 0;
         } else if (message == "!startgame") {
-            client.playing_ingame = true;
-            // FIXME: set playing_ingame for other clients too
+            if (not client.has_room) {
+                send_response(client.socket, "403|You are not in a room!");
+                continue;
+            }
+
+            if (not client.is_host) {
+                send_response(client.socket, "403|You are not the host!");
+                continue;
+            }
+
+            for (auto _client : all_rooms[client.room_code]) {
+                _client->playing_ingame = true;
+                send_response(_client->socket, "670|The game has started!");
+
+                if (_client->socket != client.socket) opponent = _client;
+            }
         }
     }
 
     if (client.has_room) { 
-        // TODO: kick roomate if present
-
         all_rooms.erase(client.room_code);
         std::cout << "Destroyed room of " << client.name << " with ID " << client.room_code << "." << std::endl; 
     }

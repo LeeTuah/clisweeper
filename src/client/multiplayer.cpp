@@ -20,6 +20,7 @@ protected:
     std::atomic<bool> run_player_join_thread;
     std::atomic<bool> run_display_room_thread;
     std::atomic<bool> room_aborted;
+    std::atomic<bool> room_started;
     std::vector<std::string> players_in_lobby;
     bool need_to_append_player;
 
@@ -81,12 +82,16 @@ void Multisweeper::check_for_player_joins() {
             room_aborted.store(true);
             redraw_room_menu.store(true);
             break;
+        } else if (status_code == "670") {
+            room_started.store(true);
+            redraw_room_menu.store(true);
+            break;
         }
     }
 }
 
 void Multisweeper::display_room_message(std::string message /*= ""*/) {
-    while (run_display_room_thread.load()) { // FIXME
+    while (run_display_room_thread.load()) {
         if (redraw_room_menu.load()) {
             clear();
 
@@ -103,9 +108,11 @@ void Multisweeper::display_room_message(std::string message /*= ""*/) {
                 std::cout << iter << std::endl;
             std::cout << std::endl;
 
-            if (room_aborted.load()) {
+            if (room_aborted.load())
                 std::cout << "[!] The host has aborted the room!\n[!] Press any key to continue.....\n";
-            }
+
+            else if (room_started.load())
+                std::cout << "[!] The game has started!\n[!] Press any key to continue....\n";
 
             redraw_room_menu.store(false);
         }
@@ -113,11 +120,48 @@ void Multisweeper::display_room_message(std::string message /*= ""*/) {
 }
 
 void Multisweeper::run_game() {
-    if (placing_bombs) {
-        std::cout << _YELLOW << "[!] You have x seconds to place 15 bombs in the given board!" << RESET;
+    while (placing_bombs.load()) {
+        display_board();
+        get_kb_input();
+
+        if (player_ready_to_start.load()) break;
+    }
+    placing_bombs.store(false);
+    std::vector<std::pair<int, int>> opp_bomb_locations;
+
+    if (is_host.load()) {
+        std::string message;
+
+        for (auto coords : bomb_locations) {
+            message = std::to_string(coords.first) + "," + std::to_string(coords.second);
+            send(client_socket, message.c_str(), message.length(), 0);
+        }
+
+        for (int x = 0; x < total_mul_bombs; x++) {
+            message = recv_msg(); // message format: 3,8 (example)
+
+            std::vector<std::string> coords = split_string_to_vector(message);
+            std::pair<int, int> coords_pair = {std::stoi(coords[0]), std::stoi(coords[1])};
+            opp_bomb_locations.push_back(coords_pair);
+        }
+    } else {
+        std::string message;
+
+        for (int x = 0; x < total_mul_bombs; x++) {
+            message = recv_msg(); // message format: 3,8 (example)
+
+            std::vector<std::string> coords = split_string_to_vector(message);
+            std::pair<int, int> coords_pair = {std::stoi(coords[0]), std::stoi(coords[1])};
+            opp_bomb_locations.push_back(coords_pair);
+        }
+
+        for (auto coords : bomb_locations) {
+            message = std::to_string(coords.first) + "," + std::to_string(coords.second);
+            send(client_socket, message.c_str(), message.length(), 0);
+        }
     }
 
-    display_board();
+    remaining_flags = total_mul_bombs; // TODO change posn of this later
 }
 
 void Multisweeper::run() {
@@ -130,6 +174,7 @@ void Multisweeper::run() {
     redraw_room_menu.store(true);
     is_host.store(false);
     room_aborted.store(false);
+    gen_bombs = false;
 
     std::cout << "Enter your name: ";
     std::getline(std::cin, name);
@@ -183,7 +228,11 @@ void Multisweeper::run() {
                 if (input == 'w') {
                     const char *send_msg = "!startgame";
                     send(client_socket, send_msg, strlen(send_msg), 0);
-                    // TODO: mutex here for thread confusions
+                    
+                    run_player_join_thread.store(false);
+                    run_display_room_thread.store(false);
+
+                    // game loop here
                 } else if (input == 's') {
                     const char *close_msg = "!abort";
                     send(client_socket, close_msg, strlen(close_msg), 0);
@@ -249,6 +298,11 @@ void Multisweeper::run() {
                     run_display_room_thread.store(false);
 
                     break;
+                } else if (room_started.load()) {
+                    run_player_join_thread.store(false);
+                    run_display_room_thread.store(false);
+
+                    // game loop here
                 }
 
                 if (input == 's') {
