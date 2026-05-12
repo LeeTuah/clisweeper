@@ -7,6 +7,8 @@
 # include <algorithm>
 # include <iterator>
 # include <string>
+# include <atomic>
+# include <thread>
 
 # include "utils.cpp"
 
@@ -46,6 +48,8 @@ protected:
     bool player_won = false;
     bool gen_bombs = true;
     bool reveal_bomb_cells = false;
+    std::atomic<bool> run_time_calc_thread;
+    std::atomic<int> time_spent_in_seconds;
 
     // for multisweeper
     bool placing_bombs = false;
@@ -61,6 +65,7 @@ protected:
     void set_elem_at_cursor(int elem);
 
     void generate_bombs();
+    void calculate_time();
     void display_board();
     void get_kb_input();
     void empty_out_tiles(int x, int y);
@@ -103,6 +108,8 @@ Minesweeper::Minesweeper(int difficulty){
             board[i].push_back(tile_cell);
         }
     }
+
+    time_spent_in_seconds.store(0);
 }
 
 int Minesweeper::get_elem_at_cursor(){
@@ -139,6 +146,15 @@ void Minesweeper::generate_bombs(){
             bomb_locations.push_back(std::pair<int, int>(x, y));
             bombs_added++;
         }
+    }
+}
+
+void Minesweeper::calculate_time() {
+    while (run_time_calc_thread.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        
+        int prev_time = time_spent_in_seconds.load();
+        time_spent_in_seconds.store(prev_time + 1);
     }
 }
 
@@ -183,7 +199,7 @@ void Minesweeper::display_board(){
     }
 
     std::cout << "Remaining Flags: " << remaining_flags << "              \n";
-    std::cout << "Time Spent: " << "something something                   \n"; // TODO: stopwatch
+    std::cout << "Time Spent: " << time_spent_in_seconds.load() << " seconds                   \n";
 
     std::cout << "\nCursor coordinates: (" << cursor_coords[0] + 1 << ", " << cursor_coords[1] + 1 << ")                \n";
     std::cout << "WASD: Move, Q: Reveal Tile, E: Place/Remove Flag, P: Exit Game\n                         ";
@@ -314,9 +330,16 @@ You Stepped on a bomb!
         slow_print(_RED + you_lose + RESET, 15);
         sleep_for(500);
     }
+
+    run_time_calc_thread.store(false);
 }
 
 void Minesweeper::run(){
+    run_time_calc_thread.store(true);
+
+    std::thread time_calc_thread(&Minesweeper::calculate_time, this);
+    time_calc_thread.detach();
+
     while(true){
         display_board();
         get_kb_input();
