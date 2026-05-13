@@ -59,12 +59,14 @@ int random_number(int begin, int end){
 }
 
 void sleep_for(int delay_in_ms){
+    int delay;
     # ifdef _WIN32
-        int delay = delay_in_ms / 3;
-        if (delay == 0) delay = 1;
+	if (delay_in_ms <= 20) {
+            delay = 0;
+	} else delay = delay_in_ms;
 
     # else
-        int delay = delay_in_ms;
+        delay = delay_in_ms;
     # endif
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
