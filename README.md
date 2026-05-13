@@ -2,6 +2,7 @@
 
 
 ![CLISweeper](assets/clisweeper.png)
+
 CLI Sweeper is my attempt of making a multiplayer command-line version of the classic game, Minesweeper.
 
 ## Features
@@ -13,8 +14,7 @@ CLI Sweeper is my attempt of making a multiplayer command-line version of the cl
 * Multiplayer: 1v1 minesweeper inspired from the Battleship game. (both players place bombs and proceed to guess where each other's bombs are)
 
 ## Demo Video
-<video src="assets/demo_video.mp4" controls="controls" width="100%">
-</video>
+[![CLI Sweeper Demo Video](https://img.youtube.com/vi/8pwe49-fZ_g/maxresdefault.jpg)](https://www.youtube.com/watch?v=8pwe49-fZ_g)
 
 ## Screenshots
 ![CLISweeper](assets/screenshotone.png)
@@ -52,10 +52,13 @@ cd CLISweeper
 
 2. Compile it using Makefile
 ```bash
-make all
+make
 ```
 
-3. If you are 
+3. If you are re-compiling the code, clean the code before re-running it using
+```bash
+make clean
+```
 ## Usage
 
 Note: You must run a multiplayer server if you are attempting to play it.
