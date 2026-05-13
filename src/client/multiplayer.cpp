@@ -10,16 +10,16 @@
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    #pragma comment(lib, "ws2_32.lib") // Tells MSVC to link the socket library
+    #pragma comment(lib, "ws2_32.lib")
     #define CLOSE_SOCKET closesocket
-    typedef SOCKET SocketType; // Windows uses SOCKET
+    typedef SOCKET SocketType;
 #else
     #include <netinet/in.h>
     #include <sys/socket.h>
     #include <arpa/inet.h>
     #include <unistd.h>
     #define CLOSE_SOCKET close
-    typedef int SocketType; // Linux uses int
+    typedef int SocketType;
 #endif
 
 class Multisweeper : public Minesweeper{
