@@ -52,7 +52,7 @@ protected:
     std::atomic<int> time_spent_in_seconds;
 
     // for multisweeper
-    std::vector<std::pair<int, int>> bomb_locations;
+    // std::vector<std::pair<int, int>> bomb_locations;
     std::vector<std::pair<int, int>> marked_bombs;
     std::atomic<bool> placing_bombs = false;
     std::atomic<bool> player_ready_to_start = false;
@@ -187,15 +187,20 @@ void Minesweeper::display_board(){
                 if (x == 0){
                     std::cout << " ";
 
-                    if(board[i][j] == bomb_cell or board[i][j] == bomb_cell + flag_addn){
+                    if (cursor_coords[0] == j and cursor_coords[1] == i)
+                        std::cout << _CYAN + _PURPLE_BG + cursor;
+
+                    else if(board[i][j] == bomb_cell or board[i][j] == bomb_cell + flag_addn){
                         std::pair<int, int> coords = {j, i};
                         bool find_marked_bomb = std::find(marked_bombs.begin(), marked_bombs.end(), coords) != marked_bombs.end();
                         if (reveal_bomb_cells or placing_bombs.load() or find_marked_bomb)
                             std::cout << _RED + "✸";
-                    }
+                        
+                        else if (board[i][j] == bomb_cell + flag_addn and not placing_bombs.load())
+                            std::cout << _RED + "▶";
 
-                    else if (cursor_coords[0] == j and cursor_coords[1] == i)
-                        std::cout << _CYAN + _PURPLE_BG + cursor;
+                        else std::cout << _GREEN + "█";
+                    }
 
                     else if(std::find(std::begin(cell_lists), std::end(cell_lists), board[i][j]) != std::end(cell_lists) and (not placing_bombs.load()))
                         std::cout << _RED + "▶";
@@ -260,10 +265,13 @@ void Minesweeper::get_kb_input(){
                 is_game_over.store(true);
                 player_won = false;
             } else {
-                marked_bombs.push_back({cursor_coords[0], cursor_coords[1]});
+                std::pair<int, int> current_coords = {cursor_coords[0], cursor_coords[1]};
 
-                int prev_time = time_spent_in_seconds.load();
-                time_spent_in_seconds.store(prev_time + player_penalty);
+                if (std::find(marked_bombs.begin(), marked_bombs.end(), current_coords) != marked_bombs.end()){
+                    marked_bombs.push_back(current_coords);
+                    int prev_time = time_spent_in_seconds.load();
+                    time_spent_in_seconds.store(prev_time + player_penalty);
+                }
             }
         }
         else if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)) return;
@@ -358,8 +366,6 @@ void Minesweeper::check_for_win(){
 
     is_game_over.store(true);
     player_won = true;
-
-
 }
 
 void Minesweeper::game_over_animation(){
@@ -367,16 +373,16 @@ void Minesweeper::game_over_animation(){
         std::string you_won;
 
         if (not multiplayer_gamemode){
-        you_won = R"(
-█▄█ █▀█ █░█   █░█░█ █ █▄░█ █
-░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
-You cleared out all the bombs!
+        you_won = R"(                                                                     
+█▄█ █▀█ █░█   █░█░█ █ █▄░█ █                                        
+░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄                                        
+You cleared out all the bombs!                                        
 )";
         } else {
-            you_won = R"(
-█▄█ █▀█ █░█   █░█░█ █ █▄░█ █
-░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
-You completed before your opponent!
+            you_won = R"(                                                                     
+█▄█ █▀█ █░█   █░█░█ █ █▄░█ █                                        
+░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄                                        
+You completed before your opponent!                                        
 )";
         }
 
@@ -388,16 +394,16 @@ You completed before your opponent!
         reveal_bomb_cells = true;
 
         if (not multiplayer_gamemode) {
-        you_lose = R"(
-█▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀
-░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄
-You Stepped on a bomb!
+        you_lose = R"(                                                                     
+█▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀                                        
+░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄                                        
+You Stepped on a bomb!                                        
 )";
         } else {
-            you_lose = R"(
-█▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀
-░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄
-You failed to complete before your opponent!
+            you_lose = R"(                                                                     
+█▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀                                        
+░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄                                        
+You failed to complete before your opponent!                                        
 )";
         }
 

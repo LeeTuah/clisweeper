@@ -1,19 +1,30 @@
 # include <iostream>
 # include <cstring>
 # include <string>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <arpa/inet.h>
-# include <unistd.h>
 # include <vector>
 # include <cctype>
 # include <atomic>
 
 # include "minesweeper.cpp"
 
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib") // Tells MSVC to link the socket library
+    #define CLOSE_SOCKET closesocket
+    typedef SOCKET SocketType; // Windows uses SOCKET
+#else
+    #include <netinet/in.h>
+    #include <sys/socket.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #define CLOSE_SOCKET close
+    typedef int SocketType; // Linux uses int
+#endif
+
 class Multisweeper : public Minesweeper{
 protected:
-    int client_socket;
+    SocketType client_socket;
     sockaddr_in server_address;
     std::string name;
 
@@ -42,6 +53,7 @@ public:
         inet_pton(AF_INET, "192.168.1.4", &(server_address.sin_addr));
 
         multiplayer_gamemode = true;
+        time_spent_by_opp = 0;
     }
 
     void run();
@@ -93,6 +105,8 @@ void Multisweeper::check_for_player_joins() {
 
 void Multisweeper::check_for_opp_win() {
     std::string msg = recv_msg(); // format: !win <time_spent_in_seconds>
+    if (msg.length() == 0) return;
+
     std::string win_status = substr(msg, 4);
     std::string time_spent;
 
@@ -130,6 +144,8 @@ void Multisweeper::display_room_message(std::string message /*= ""*/) {
 
             redraw_room_menu.store(false);
         }
+
+        sleep_for(50);
     }
 }
 
@@ -152,36 +168,36 @@ void Multisweeper::run_game() {
     placing_bombs.store(false);
     std::vector<std::pair<int, int>> opp_bomb_locations;
 
-    if (is_host.load()) {
-        std::string message;
-
-        for (auto coords : bomb_locations) {
-            message = std::to_string(coords.first) + "," + std::to_string(coords.second);
-            send(client_socket, message.c_str(), message.length(), 0);
+    for (int i = 0; i < board_size[1]; i++) {
+        for (int j = 0; j < board_size[0]; j++) {
+            board[i][j] = tile_cell;
         }
+    }
 
-        for (int x = 0; x < total_mul_bombs; x++) {
-            message = recv_msg(); // message format: 3,8 (example)
+    if (is_host.load()) {
+        std::string message = "";
+        for (auto coords : bomb_locations)
+            message += std::to_string(coords.first) + "," + std::to_string(coords.second) + ",";
+        send(client_socket, message.c_str(), message.length(), 0);
 
-            std::vector<std::string> coords = split_string_to_vector(message);
-            std::pair<int, int> coords_pair = {std::stoi(coords[0]), std::stoi(coords[1])};
-            opp_bomb_locations.push_back(coords_pair);
+        message = recv_msg();
+        std::vector<std::string> all_coords = split_string_to_vector(message);
+        for (int i = 0; i < all_coords.size(); i += 2) {
+            std::pair<int, int> coord_pair = {std::stoi(all_coords[i]), std::stoi(all_coords[i + 1])};
+            opp_bomb_locations.push_back(coord_pair);
         }
     } else {
-        std::string message;
-
-        for (int x = 0; x < total_mul_bombs; x++) {
-            message = recv_msg(); // message format: 3,8 (example)
-
-            std::vector<std::string> coords = split_string_to_vector(message);
-            std::pair<int, int> coords_pair = {std::stoi(coords[0]), std::stoi(coords[1])};
-            opp_bomb_locations.push_back(coords_pair);
+        std::string message = recv_msg();
+        std::vector<std::string> all_coords = split_string_to_vector(message);
+        for (int i = 0; i < all_coords.size(); i += 2) {
+            std::pair<int, int> coord_pair = {std::stoi(all_coords[i]), std::stoi(all_coords[i + 1])};
+            opp_bomb_locations.push_back(coord_pair);
         }
 
-        for (auto coords : bomb_locations) {
-            message = std::to_string(coords.first) + "," + std::to_string(coords.second);
-            send(client_socket, message.c_str(), message.length(), 0);
-        }
+        message = "";
+        for (auto coords : bomb_locations)
+            message += std::to_string(coords.first) + "," + std::to_string(coords.second) + ",";
+        send(client_socket, message.c_str(), message.length(), 0);
     }
     bomb_locations.clear();
     bomb_locations = opp_bomb_locations;
@@ -196,16 +212,32 @@ void Multisweeper::run_game() {
     std::thread opp_win_check_thread(&Multisweeper::check_for_opp_win, this);
     opp_win_check_thread.detach();
 
+    clear();
+    time_spent_in_seconds.store(0);
+    bool send_completed_time = true;
+
     while (true) {
         display_board();
         get_kb_input();
 
         check_for_win();
         if (is_game_over.load()) {
-            player_won = (time_spent_in_seconds <= time_spent_by_opp); // FIXME draw when both have same time
-            // FIXME continue from here, working on player winning conditions and stuff
-            game_over_animation(); 
-            break;
+            if (send_completed_time) {
+                std::string win_msg = "!win " + std::to_string(time_spent_in_seconds.load());
+                send(client_socket, win_msg.c_str(), win_msg.length(), 0);
+                send_completed_time = false;
+
+                run_time_calc_thread.store(false);
+            }
+
+            if (time_spent_by_opp != 0) {
+                player_won = (time_spent_in_seconds <= time_spent_by_opp); // FIXME draw when both have same time
+                
+                game_over_animation(); 
+                break;
+            }
+
+            std::cout << "[I] Waiting for the other person to complete their game.\n[I] Press any key to refresh the board.\n" << std::endl;
         }
     }
 }
@@ -220,6 +252,8 @@ void Multisweeper::run() {
     redraw_room_menu.store(true);
     is_host.store(false);
     room_aborted.store(false);
+    room_started.store(false);
+    placing_bombs.store(true);
     gen_bombs = false;
 
     std::cout << "Enter your name: ";
@@ -278,7 +312,8 @@ void Multisweeper::run() {
                     run_player_join_thread.store(false);
                     run_display_room_thread.store(false);
 
-                    // game loop here
+                    run_game();
+                    break;
                 } else if (input == 's') {
                     const char *close_msg = "!abort";
                     send(client_socket, close_msg, strlen(close_msg), 0);
@@ -348,7 +383,8 @@ void Multisweeper::run() {
                     run_player_join_thread.store(false);
                     run_display_room_thread.store(false);
 
-                    // game loop here
+                    run_game();
+                    break;
                 }
 
                 if (input == 's') {
@@ -371,11 +407,4 @@ void Multisweeper::run() {
             break;
         }
     }
-}
-
-int main(){
-    Multisweeper m(1);
-    m.run();
-
-    return 0;
 }

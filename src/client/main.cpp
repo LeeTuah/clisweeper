@@ -1,4 +1,4 @@
-# include "minesweeper.cpp"
+# include "multiplayer.cpp"
 # include "intro.cpp"
 
 # include "../include/Menu.h"
@@ -27,7 +27,23 @@ void singleplayer(){
     }
 }
 
+void multiplayer() {
+    clear();
+
+    Multisweeper m(1);
+    m.run();
+}
+
 int main(){
+    #ifdef _WIN32
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+            std::cout << "WSAStartup failed.\n";
+            return 1;
+        }
+    #endif
+
+
     fix_mojibake_for_windows();
     clear();
 
@@ -40,7 +56,7 @@ int main(){
     intro_menu.set_max_len(33);
 
     intro_menu.add_field("Singleplayer", singleplayer);
-    intro_menu.add_field("Multiplayer", temp);
+    intro_menu.add_field("Multiplayer", multiplayer);
     intro_menu.add_field("Controls", controls);
 
     intro_menu.run_menu();

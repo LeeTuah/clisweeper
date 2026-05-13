@@ -1,9 +1,6 @@
 # include <iostream>
 # include <cstring>
 # include <string>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <unistd.h>
 # include <thread>
 # include <map>
 # include <vector>
@@ -12,25 +9,23 @@
 
 # include "utils.cpp"
 
-/*
-My concept for Multisweeper:
-
-Design inspired from the battleships board game 
-
-1. Players get a set time to place bombs in their own boards.
-2. After both ready, their boards are swapped.
-3. Now, both have to guess where the mines are.
-4. First one to die loses, or first one to complete their area wins.
-
-Flaws:
-
-1. Player can make an impossible board, which does not have any solutions
-Solutions: 1. Make an algorithm to check for impossible boards (more complicated, but rewarding)
-           2. Make it so that players do not lose the game instantly when this happens, they just get a penalty (less complicated, but breaks my flow)
-*/
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+    #define CLOSE_SOCKET closesocket
+    typedef SOCKET SocketType; 
+#else
+    #include <netinet/in.h>
+    #include <sys/socket.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #define CLOSE_SOCKET close
+    typedef int SocketType;
+#endif
 
 struct Client{
-    int socket;
+    SocketType socket;
     std::string name;
 
     bool has_room;
@@ -44,11 +39,11 @@ struct Client{
 int PLAYER_CAP = 2;
 int total_mul_bombs = 14;
 
-int server_socket;
+SocketType server_socket;
 std::map<std::string, Client*> client_map;
 std::map<int, std::vector<Client*>> all_rooms;
 
-void send_response(int client_socket, std::string message){
+void send_response(SocketType client_socket, std::string message){
     send(client_socket, message.c_str(), message.length(), 0);
 }
 
@@ -61,7 +56,7 @@ bool room_exists(int room_code){
 
 void handle_connections(Client client){
     bool name_needed = true;
-    Client *opponent;
+    Client *opponent = nullptr;
 
     bool collect_bombs = true;
     int bombs_left_to_collect = total_mul_bombs; // TODO reset them at the end of the game
@@ -104,14 +99,18 @@ void handle_connections(Client client){
 
             continue;
         } else if (client.playing_ingame) {
-            if (collect_bombs) {
-                send_response(opponent->socket, message);
-
-                if (bombs_left_to_collect == 0) collect_bombs = false;
-                continue;
+            if (opponent == nullptr) {
+                for (auto _client : all_rooms[client.room_code]) {
+                    if (_client->socket != client.socket) {
+                        opponent = _client;
+                        break;
+                    }
+                }
             }
 
-
+            if (opponent != nullptr)
+                send_response(opponent->socket, message);
+            continue;
         } else if (message == "!close") {
             send_response(client.socket, "200|Closed your connection successfully.");
 
@@ -132,6 +131,7 @@ void handle_connections(Client client){
 
             client.has_room = true;
             client.room_code = r_code;
+            client.is_host = true;
 
             all_rooms.insert({r_code, {&client}});
 
@@ -244,6 +244,8 @@ void handle_connections(Client client){
 
                 if (_client->socket != client.socket) opponent = _client;
             }
+
+            std::cout << client.name << " started a game." << std::endl;
         }
     }
 
