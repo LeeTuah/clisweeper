@@ -3,10 +3,6 @@
 
 # include "../include/Menu.h"
 
-void temp(){
-    // 
-}
-
 void singleplayer(){
     std::cout << _CYAN << "Choose your difficulty: \n";
     std::cout << _GREEN << "1. Easy \n2. Medium \n3. Hard \n4. Back \n>> " << RESET;

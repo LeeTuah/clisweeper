@@ -246,6 +246,8 @@ void Multisweeper::run() {
     int connect_status = connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address));
     if (connect_status == -1) {
         std::cout << "Failed to connect to the server!\n";
+        std::cout << "Press any key to continue....";
+        char x = get_char();
         return;
     }
     need_to_append_player = true;
@@ -265,6 +267,8 @@ void Multisweeper::run() {
 
     if (substr(message, 3) != "200") {
         std::cout << "An error occured!\n" << message;
+        std::cout << "Press any key to continue...";
+        char x = get_char();
         return;
     }
 
@@ -274,8 +278,6 @@ void Multisweeper::run() {
         std::cout << "Choose one of the following: \n";
         std::cout << "1. Host Game \n2. Join Game \n3. Exit\n>> ";
 
-        run_player_join_thread.store(true);
-        run_display_room_thread.store(true);
         char input = get_char();
 
         if (input == '1') {
@@ -286,9 +288,14 @@ void Multisweeper::run() {
 
             if (substr(message, 3) != "200") {
                 std::cout << "An error occured!\n" << message;
+                std::cout << "Press any key to continue...";
+                char x = get_char();
                 return;
             }
             message = message.substr(4);
+
+            run_player_join_thread.store(true);
+            run_display_room_thread.store(true);
 
             std::thread player_joins_thread(&Multisweeper::check_for_player_joins, this);
             player_joins_thread.detach();
@@ -323,6 +330,7 @@ void Multisweeper::run() {
 
                     run_player_join_thread.store(false);
                     run_display_room_thread.store(false);
+                    players_in_lobby.clear();
                     break;
                 }
             }
@@ -349,6 +357,8 @@ void Multisweeper::run() {
 
             if (substr(message, 3) != "200") {
                 std::cout << "An error occured!\n" << message;
+                std::cout << "Press any key to continue...";
+                char x = get_char();
                 return;
             }
 
@@ -358,6 +368,9 @@ void Multisweeper::run() {
             message = recv_msg();
             message = message.substr(4);
             players_in_lobby = split_string_to_vector(message);
+
+            run_player_join_thread.store(true);
+            run_display_room_thread.store(true);
 
             redraw_room_menu.store(true);
 
@@ -396,6 +409,7 @@ void Multisweeper::run() {
 
                     run_player_join_thread.store(false);
                     run_display_room_thread.store(false);
+                    players_in_lobby.clear();
                     break;
                 }
             }
@@ -403,6 +417,7 @@ void Multisweeper::run() {
         } else if (input == '3'){
             const char* msg = "!close";
             send(client_socket, msg, strlen(msg), 0);
+            close(client_socket);
 
             break;
         }
