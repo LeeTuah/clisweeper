@@ -27,7 +27,6 @@ Symbols:
 */
 
 // TODO: sound support
-// TODO: multiplayer
 
 class Minesweeper{
 protected:
