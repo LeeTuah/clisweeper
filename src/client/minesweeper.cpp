@@ -44,7 +44,7 @@ protected:
     int flag_addn = 1;       // adds by given num to a cell if flag places there
     int cell_lists[3] = {empty_cell + flag_addn, tile_cell + flag_addn, bomb_cell + flag_addn}; // ONLY FOR ITERATING
 
-    bool is_game_over = false;
+    std::atomic<bool> is_game_over = false;
     bool player_won = false;
     bool gen_bombs = true;
     bool reveal_bomb_cells = false;
@@ -53,11 +53,13 @@ protected:
 
     // for multisweeper
     std::vector<std::pair<int, int>> bomb_locations;
+    std::vector<std::pair<int, int>> marked_bombs;
     std::atomic<bool> placing_bombs = false;
     std::atomic<bool> player_ready_to_start = false;
     bool multiplayer_gamemode = false;
     int player_penalty = 30; // seconds added for stepping in bomb
     int total_mul_bombs = 14;
+    bool give_penalty = false;
 
     int board_size[2];
     int cursor_coords[2];
@@ -168,6 +170,9 @@ void Minesweeper::display_board(){
     if (placing_bombs.load())
         std::cout << _YELLOW << "[!] You have 60 seconds to place 14 bombs in the given board!\n\n" << RESET;
 
+    else if (multiplayer_gamemode)
+        std::cout << _YELLOW << "[!] First one to clear the board wins.\n[!] Stepping on a bomb will result in a penalty of 30 seconds.\n\n" << RESET;
+
     std::cout << "╋";
     for (int x = 0; x < board_size[0]; x++){
         std::cout << "━━━╋";
@@ -182,8 +187,12 @@ void Minesweeper::display_board(){
                 if (x == 0){
                     std::cout << " ";
 
-                    if((board[i][j] == bomb_cell or board[i][j] == bomb_cell + flag_addn) and (reveal_bomb_cells or placing_bombs.load()))
-                        std::cout << _RED + "✸";
+                    if(board[i][j] == bomb_cell or board[i][j] == bomb_cell + flag_addn){
+                        std::pair<int, int> coords = {j, i};
+                        bool find_marked_bomb = std::find(marked_bombs.begin(), marked_bombs.end(), coords) != marked_bombs.end();
+                        if (reveal_bomb_cells or placing_bombs.load() or find_marked_bomb)
+                            std::cout << _RED + "✸";
+                    }
 
                     else if (cursor_coords[0] == j and cursor_coords[1] == i)
                         std::cout << _CYAN + _PURPLE_BG + cursor;
@@ -238,7 +247,7 @@ void Minesweeper::get_kb_input(){
     } else if (input == 'd'){
         if (cursor_coords[0] < board_size[0] - 1)
         cursor_coords[0] += 1;
-    } else if (input == 'q' and not placing_bombs.load() and not multiplayer_gamemode){
+    } else if (input == 'q' and not placing_bombs.load()){
         if (gen_bombs){
             gen_bombs = false;
             generate_bombs();
@@ -247,13 +256,20 @@ void Minesweeper::get_kb_input(){
         int cursor_elem = get_elem_at_cursor();
 
         if (cursor_elem == bomb_cell){
-            is_game_over = true;
-            player_won = false;
+            if (not multiplayer_gamemode) {
+                is_game_over.store(true);
+                player_won = false;
+            } else {
+                marked_bombs.push_back({cursor_coords[0], cursor_coords[1]});
+
+                int prev_time = time_spent_in_seconds.load();
+                time_spent_in_seconds.store(prev_time + player_penalty);
+            }
         }
         else if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)) return;
         else if (cursor_elem == tile_cell)
             empty_out_tiles(cursor_coords[0], cursor_coords[1]);
-    } else if (input == 'e' and not placing_bombs.load() and not multiplayer_gamemode){
+    } else if (input == 'e' and not placing_bombs.load()){
         if (std::find(std::begin(cell_lists), std::end(cell_lists), get_elem_at_cursor()) != std::end(cell_lists)){
             set_elem_at_cursor(get_elem_at_cursor() - flag_addn);
             remaining_flags++;
@@ -340,28 +356,50 @@ void Minesweeper::check_for_win(){
         }
     }
 
-    is_game_over = true;
+    is_game_over.store(true);
     player_won = true;
+
+
 }
 
 void Minesweeper::game_over_animation(){
     if (player_won){
-        std::string you_won = R"(
+        std::string you_won;
+
+        if (not multiplayer_gamemode){
+        you_won = R"(
 █▄█ █▀█ █░█   █░█░█ █ █▄░█ █
 ░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
 You cleared out all the bombs!
 )";
+        } else {
+            you_won = R"(
+█▄█ █▀█ █░█   █░█░█ █ █▄░█ █
+░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
+You completed before your opponent!
+)";
+        }
 
         display_board();
         slow_print(_GREEN + you_won + RESET, 15);
         sleep_for(500);
     } else {
+        std::string you_lose;
         reveal_bomb_cells = true;
-        std::string you_lose = R"(
+
+        if (not multiplayer_gamemode) {
+        you_lose = R"(
 █▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀
 ░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄
 You Stepped on a bomb!
 )";
+        } else {
+            you_lose = R"(
+█▄█ █▀█ █░█   █░░ █▀█ █▀ █▀▀   ▀ █▀▀
+░█░ █▄█ █▄█   █▄▄ █▄█ ▄█ ██▄   ▄ █▄▄
+You failed to complete before your opponent!
+)";
+        }
 
         display_board();
         slow_print(_RED + you_lose + RESET, 15);
@@ -382,7 +420,7 @@ void Minesweeper::run(){
         get_kb_input();
 
         check_for_win();
-        if (is_game_over){
+        if (is_game_over.load()){
             game_over_animation();
             break;
         }

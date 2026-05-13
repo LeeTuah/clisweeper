@@ -26,11 +26,12 @@ protected:
 
     std::atomic<bool> is_host;
     std::atomic<bool> redraw_room_menu;
+    std::atomic<int> time_spent_by_opp;
 
     std::string recv_msg();
     void check_for_player_joins();
+    void check_for_opp_win();
     void display_room_message(std::string message = "");
-    void recieve_board_from_host();
     void run_game();
 public:
     Multisweeper(int difficulty) : Minesweeper(difficulty){
@@ -90,6 +91,19 @@ void Multisweeper::check_for_player_joins() {
     }
 }
 
+void Multisweeper::check_for_opp_win() {
+    std::string msg = recv_msg(); // format: !win <time_spent_in_seconds>
+    std::string win_status = substr(msg, 4);
+    std::string time_spent;
+
+    if (win_status == "!win") {
+        time_spent = msg.substr(5);
+        time_spent_by_opp.store(std::stoi(time_spent));
+    } else if (win_status == "!dis") { // client disconnected
+        // do something
+    }
+}
+
 void Multisweeper::display_room_message(std::string message /*= ""*/) {
     while (run_display_room_thread.load()) {
         if (redraw_room_menu.load()) {
@@ -120,11 +134,20 @@ void Multisweeper::display_room_message(std::string message /*= ""*/) {
 }
 
 void Multisweeper::run_game() {
+    run_time_calc_thread.store(true);
+    std::thread time_calc_thread_prep(&Multisweeper::calculate_time, this);
+    time_calc_thread_prep.detach();
+
     while (placing_bombs.load()) {
         display_board();
         get_kb_input();
 
-        if (player_ready_to_start.load()) break;
+        if (time_spent_in_seconds.load() >= 60) player_ready_to_start.store(true);
+
+        if (player_ready_to_start.load()){
+            run_time_calc_thread.store(false);
+            break;
+        }
     }
     placing_bombs.store(false);
     std::vector<std::pair<int, int>> opp_bomb_locations;
@@ -160,8 +183,31 @@ void Multisweeper::run_game() {
             send(client_socket, message.c_str(), message.length(), 0);
         }
     }
+    bomb_locations.clear();
+    bomb_locations = opp_bomb_locations;
+    for (auto bomb_coord : bomb_locations) board[bomb_coord.second][bomb_coord.first] = bomb_cell;
 
-    remaining_flags = total_mul_bombs; // TODO change posn of this later
+    remaining_flags = total_mul_bombs;
+
+    run_time_calc_thread.store(true);
+    std::thread time_calc_thread_main(&Multisweeper::calculate_time, this);
+    time_calc_thread_main.detach();
+
+    std::thread opp_win_check_thread(&Multisweeper::check_for_opp_win, this);
+    opp_win_check_thread.detach();
+
+    while (true) {
+        display_board();
+        get_kb_input();
+
+        check_for_win();
+        if (is_game_over.load()) {
+            player_won = (time_spent_in_seconds <= time_spent_by_opp); // FIXME draw when both have same time
+            // FIXME continue from here, working on player winning conditions and stuff
+            game_over_animation(); 
+            break;
+        }
+    }
 }
 
 void Multisweeper::run() {

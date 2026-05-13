@@ -38,6 +38,7 @@ struct Client{
     int room_code;
 
     bool playing_ingame;
+    bool is_won;
 };
 
 int PLAYER_CAP = 2;
@@ -95,6 +96,7 @@ void handle_connections(Client client){
             client.is_host = false;
             client.room_code = 0;
             client.playing_ingame = false;
+            client.is_won = false;
             client_map.insert({client.name, &client});
 
             send_response(client.socket, "200|Successfully entered you to the server!");
@@ -102,7 +104,14 @@ void handle_connections(Client client){
 
             continue;
         } else if (client.playing_ingame) {
-            // playing the game
+            if (collect_bombs) {
+                send_response(opponent->socket, message);
+
+                if (bombs_left_to_collect == 0) collect_bombs = false;
+                continue;
+            }
+
+
         } else if (message == "!close") {
             send_response(client.socket, "200|Closed your connection successfully.");
 
