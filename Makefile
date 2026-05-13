@@ -5,7 +5,7 @@ ifeq ($(OS),Windows_NT)
     EXT = .exe
     LDFLAGS = -lws2_32
     CLEAN_CMD = del /Q /F
-    CLEAN_TARGETS = server\server$(EXT) client\client$(EXT)
+    CLEAN_TARGETS = src\server\server$(EXT) src\client\client$(EXT)
 else
     EXT =
     LDFLAGS = -pthread

@@ -255,7 +255,7 @@ void handle_connections(Client client){
     }
 
     client_map.erase(client.name);
-    close(client.socket);
+    CLOSE_SOCKET(client.socket);
 }
 
 int main(){
@@ -285,7 +285,7 @@ int main(){
         client_thread.detach();
     }
     
-    close(server_socket);
+    CLOSE_SOCKET(server_socket);
 
     return 0;
 }

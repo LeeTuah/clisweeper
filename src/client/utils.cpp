@@ -59,7 +59,15 @@ int random_number(int begin, int end){
 }
 
 void sleep_for(int delay_in_ms){
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay_in_ms));
+    # ifdef _WIN32
+        int delay = delay_in_ms / 3;
+        if (delay == 0) delay = 1;
+
+    # else
+        int delay = delay_in_ms;
+    # endif
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 }
 
 void slow_print(std::string message, int delay_in_ms = 50){
@@ -105,17 +113,5 @@ std::vector<std::string> split_string_to_vector(std::string str, std::string sep
     if (*(vec.end() - 1) == "") vec.pop_back();
     return vec;
 }
-
-// int main(){
-//     # include <string>
-
-//     std::string you_won = R"(
-// █▄█ █▀█ █░█   █░█░█ █ █▄░█ █
-// ░█░ █▄█ █▄█   ▀▄▀▄▀ █ █░▀█ ▄
-// )";
-//     slow_print(_GREEN + you_won + RESET, 15);
-//     slow_print("         \n");
-
-// }
 
 # endif

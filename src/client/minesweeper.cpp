@@ -167,7 +167,7 @@ void Minesweeper::display_board(){
     reset_cursor();
 
     if (placing_bombs.load())
-        std::cout << _YELLOW << "[!] You have 60 seconds to place 14 bombs in the given board!\n\n" << RESET;
+        std::cout << _YELLOW << "[!] You have 60 seconds to place 14 bombs in the given board!\n                                                                        \n" << RESET;
 
     else if (multiplayer_gamemode)
         std::cout << _YELLOW << "[!] First one to clear the board wins.\n[!] Stepping on a bomb will result in a penalty of 30 seconds.\n\n" << RESET;
@@ -266,7 +266,7 @@ void Minesweeper::get_kb_input(){
             } else {
                 std::pair<int, int> current_coords = {cursor_coords[0], cursor_coords[1]};
 
-                if (std::find(marked_bombs.begin(), marked_bombs.end(), current_coords) != marked_bombs.end()){
+                if (std::find(marked_bombs.begin(), marked_bombs.end(), current_coords) == marked_bombs.end()){
                     marked_bombs.push_back(current_coords);
                     int prev_time = time_spent_in_seconds.load();
                     time_spent_in_seconds.store(prev_time + player_penalty);

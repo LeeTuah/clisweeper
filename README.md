@@ -12,8 +12,12 @@ CLI Sweeper is my attempt of making a multiplayer command-line version of the cl
 * Singleplayer: Classic minesweeper.
 * Multiplayer: 1v1 minesweeper inspired from the Battleship game. (both players place bombs and proceed to guess where each other's bombs are)
 
+## Demo Video
+![Demo Video](assets/demo_video.mp4)
+
 ## Screenshots
-TBD.
+![CLISweeper](assets/screenshotone.png)
+![CLISweeper](assets/screenshottwo.png)
 
 ## Project Structure
 ```
@@ -50,6 +54,7 @@ cd CLISweeper
 make all
 ```
 
+3. If you are 
 ## Usage
 
 Note: You must run a multiplayer server if you are attempting to play it.

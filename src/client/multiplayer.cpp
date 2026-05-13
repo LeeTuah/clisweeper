@@ -205,6 +205,8 @@ void Multisweeper::run_game() {
 
     remaining_flags = total_mul_bombs;
 
+    sleep_for(1000);
+
     run_time_calc_thread.store(true);
     std::thread time_calc_thread_main(&Multisweeper::calculate_time, this);
     time_calc_thread_main.detach();
@@ -228,6 +230,7 @@ void Multisweeper::run_game() {
                 send_completed_time = false;
 
                 run_time_calc_thread.store(false);
+                sleep_for(1000);
             }
 
             if (time_spent_by_opp != 0) {
@@ -417,7 +420,7 @@ void Multisweeper::run() {
         } else if (input == '3'){
             const char* msg = "!close";
             send(client_socket, msg, strlen(msg), 0);
-            close(client_socket);
+            CLOSE_SOCKET(client_socket);
 
             break;
         }
