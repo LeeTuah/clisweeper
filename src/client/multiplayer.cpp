@@ -4,6 +4,7 @@
 # include <vector>
 # include <cctype>
 # include <atomic>
+# include <fstream>
 
 # include "minesweeper.cpp"
 
@@ -21,6 +22,24 @@
     #define CLOSE_SOCKET close
     typedef int SocketType;
 #endif
+
+std::string get_server_ip() {
+    std::ifstream config_file("config.txt");
+    std::string config_str;
+
+    if (not config_file.is_open()) {
+        std::cout << "Could not open the config file!" << std::endl;
+        return "";
+    }
+
+    std::getline(config_file, config_str);
+
+    if (config_str.find("server_ip=") == 0)
+        return config_str.substr(10);
+
+    std::cout << "The file is formatted incorrectly!" << std::endl;
+    return "";
+}
 
 class Multisweeper : public Minesweeper{
 protected:
@@ -47,10 +66,11 @@ protected:
 public:
     Multisweeper(int difficulty) : Minesweeper(difficulty){
         client_socket = socket(AF_INET, SOCK_STREAM, 0);
+        std::string server_ip = get_server_ip();
 
         server_address.sin_family = AF_INET;
         server_address.sin_port = htons(6741);
-        inet_pton(AF_INET, "192.168.1.4", &(server_address.sin_addr));
+        inet_pton(AF_INET, server_ip.c_str(), &(server_address.sin_addr));
 
         multiplayer_gamemode = true;
         time_spent_by_opp = 0;
